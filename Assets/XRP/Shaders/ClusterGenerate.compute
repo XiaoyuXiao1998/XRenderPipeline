@@ -1,0 +1,87 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel ClusterGenerate
+#include "UnityCG.cginc"
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+
+
+
+//global parameters;
+float4x4 ViewMatrix;
+float4x4 ViewMatrixInv;
+float4x4 VPMatrix;
+float4x4 VPMatrixInv;
+
+float NumClusterX;
+float NumClusterY;
+float NumClusterZ;
+
+struct ClusterBox 
+{
+    //left to right
+    //bottom to up
+    //front to back
+    float3 p0, p1, p2, p3, p4, p5, p6, p7;
+
+};
+
+
+RWStructuredBuffer<ClusterBox> ClusterBuffer;
+
+
+float3 TransformFromNDCToWorld(float4x4 mat, float3 NDCPosition) {
+    float4 NDCHomogeneous = float4(NDCPosition, 1.0);
+    float4 WorldPosition = mul(mat, NDCHomogeneous);
+    return WorldPosition.xyz / WorldPosition.w;
+
+}
+
+
+[numthreads(16,16,1)]
+void ClusterGenerate (uint3 groupID: SV_GroupID,
+                      uint3 groupThreadID: SV_GroupThreadID)
+{
+    // TODO: insert actual code here!
+    uint i = groupThreadID.x;
+    uint j = groupThreadID.y;
+    uint k = groupID.x;
+
+    uint ClusterID = k * NumClusterX * NumClusterY + j * NumClusterX + i;
+
+
+    float x = float(i);
+    float y = float(j);
+    float z = float(k);
+
+    //from NDC space to clip space
+    float xmin = (x / NumClusterX) * 2 - 1;
+    float ymin = (y / NumClusterY) * 2 - 1;
+    float zmin = z / NumClusterZ;
+    float xmax = ((x+1) / NumClusterX) * 2 - 1;
+    float ymax = ((y+1) / NumClusterY) * 2 - 1;
+    float zmax = (z + 1) / NumClusterZ;
+
+    //transform to world space
+    float3 p0 = TransformFromNDCToWorld(VPMatrixInv, float3(xmin, ymin, 0));
+    float3 p1 = TransformFromNDCToWorld(VPMatrixInv, float3(xmin, ymin, 1));
+    float3 p2 = TransformFromNDCToWorld(VPMatrixInv, float3(xmin, ymax, 0));
+    float3 p3 = TransformFromNDCToWorld(VPMatrixInv, float3(xmin, ymax, 1));
+    float3 p4 = TransformFromNDCToWorld(VPMatrixInv, float3(xmax, ymin, 0));
+    float3 p5 = TransformFromNDCToWorld(VPMatrixInv, float3(xmax, ymin, 1));
+    float3 p6 = TransformFromNDCToWorld(VPMatrixInv, float3(xmax, ymax, 0));
+    float3 p7 = TransformFromNDCToWorld(VPMatrixInv, float3(xmax, ymax, 1));
+
+    ClusterBox box;
+    box.p0 = p0 + zmin * (p1 - p0);
+    box.p1 = p0 + zmax * (p1 - p0);
+    box.p2 = p2 + zmin * (p3 - p2);
+    box.p3 = p2 + zmax * (p3 - p2);
+    box.p4 = p4 + zmin * (p5 - p4);
+    box.p5 = p4 + zmax * (p5 - p4);
+    box.p6 = p6 + zmin * (p7 - p6);
+    box.p7 = p6 + zmax * (p7 - p6);
+    ClusterBuffer[ClusterID] = box;
+
+
+}

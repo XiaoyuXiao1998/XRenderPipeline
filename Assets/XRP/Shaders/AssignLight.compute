@@ -1,0 +1,94 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel AssignLight
+
+#include "UnityCG.cginc"
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+
+
+int _numLights;
+int _maxLightsPerCluster;
+float NumClusterX;
+float NumClusterY;
+float NumClusterZ;
+
+
+
+
+struct ClusterBox
+{
+    float3 p0, p1, p2, p3, p4, p5, p6, p7;
+};
+
+
+struct LightIndex {
+    int start; //start index
+    int count; //
+};
+
+struct PointLight
+{
+    float3 color;
+    float intensity;
+    float3 position;
+    float radius;
+};
+
+
+RWStructuredBuffer<LightIndex> _assignTable;
+RWStructuredBuffer<uint> _lightAssignBuffer;
+RWStructuredBuffer<ClusterBox> _clusterBuffer;
+RWStructuredBuffer<PointLight> _lightBuffer;
+
+
+
+bool ClusterPointLightIntersect(PointLight pl, ClusterBox box) {
+
+    float plRange = pl.radius;
+
+    return (distance(box.p0, pl.position) < plRange) ||
+        (distance(box.p1, pl.position) < plRange) ||
+        (distance(box.p2, pl.position) < plRange) ||
+        (distance(box.p3, pl.position) < plRange) ||
+        (distance(box.p4, pl.position) < plRange) ||
+        (distance(box.p5, pl.position) < plRange) ||
+       ( distance(box.p6, pl.position) < plRange )||
+       ( distance(box.p7, pl.position) < plRange);
+}
+
+[numthreads(16,16,1)]
+void AssignLight(uint3 groupID: SV_GroupID,
+    uint3 groupThreadID : SV_GroupThreadID)
+{
+    // TODO: insert actual code here!
+    uint i = groupThreadID.x;
+    uint j = groupThreadID.y;
+    uint k = groupID.x;
+
+
+    uint ClusterID = k * NumClusterX * NumClusterY + j * NumClusterX + i;
+
+    ClusterBox box = _clusterBuffer[ClusterID];
+
+    uint startIndex = ClusterID * _maxLightsPerCluster;
+    uint endIndex = startIndex;
+
+    for (int lightIdx = 0; lightIdx < _numLights; lightIdx++)
+    {
+        if (ClusterPointLightIntersect(_lightBuffer[lightIdx], box)) 
+        {
+            _lightAssignBuffer[endIndex++] = uint(lightIdx);
+        }
+    }
+
+    //write to light assign table
+
+    LightIndex lightIndex;
+    lightIndex.start = int(startIndex);
+    lightIndex.count = int(endIndex -startIndex);
+    _assignTable[ClusterID] = lightIndex;
+
+
+
+}
