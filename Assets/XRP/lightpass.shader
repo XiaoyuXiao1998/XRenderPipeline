@@ -110,7 +110,7 @@ Shader "XPR/lightpass"
                     float r2 = pl.radius * pl.radius;
               
                     float Attenuation = saturate(1 - (d2 / r2) * (d2 / r2));
-                     Attenuation *= Attenuation;
+                     Attenuation *= Attenuation * r2/d2;
 
                     
                    PBR += CookTorranceBRDF(N, V, L, albedo, radiance, roughness, metallic) * pl.intensity * Attenuation;

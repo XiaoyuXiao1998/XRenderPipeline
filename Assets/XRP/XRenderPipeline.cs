@@ -57,13 +57,13 @@ public class XRenderPipeline : RenderPipeline
         gDepthID = gDepth;
         for (int i = 0; i < 4; i++)
             gBufferID[i] = gBuffers[i];
-        InitTAATexture();
+       // InitTAATexture();
 
-        taa = new TAA(SAMPLE_METHOD.HALTON_X2_Y3);
+       // taa = new TAA(SAMPLE_METHOD.HALTON_X2_Y3);
         frameID = 0;
 
 
-     //   clusterLight = new ClusterLight();
+        clusterLight = new ClusterLight();
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
@@ -72,6 +72,7 @@ public class XRenderPipeline : RenderPipeline
         Camera camera = cameras[0];
         if (frameID == 0)
             basematrix = camera.projectionMatrix;
+
 
 
 
@@ -84,33 +85,35 @@ public class XRenderPipeline : RenderPipeline
 
 
         //****************************set TAA Pass**********************************************
-        var jitteredProjection = basematrix;
-        
-        var cmd = new CommandBuffer();
+
+        //var jitteredProjection = basematrix;
+
+        //var cmd = new CommandBuffer();
         //cmd.SetViewProjectionMatrices(camera.worldToCameraMatrix, jitteredProjection);
-        taa.setJitterProjectionMatrix(ref jitteredProjection, ref camera);
-        cmd.SetViewMatrix(camera.worldToCameraMatrix );
-        cmd.SetProjectionMatrix(jitteredProjection);
-        camera.projectionMatrix = jitteredProjection;
+        //taa.setJitterProjectionMatrix(ref jitteredProjection, ref camera);
+        //cmd.SetViewMatrix(camera.worldToCameraMatrix );
+       // cmd.SetProjectionMatrix(jitteredProjection);
+       // camera.projectionMatrix = jitteredProjection;
 
 
 
         // ********************set camera matrix *********************************************
         Matrix4x4 view = camera.worldToCameraMatrix;
         Matrix4x4 projection = GL.GetGPUProjectionMatrix(camera.projectionMatrix, false);
-        Matrix4x4 vpMatrix = jitteredProjection * view;
+        Matrix4x4 vpMatrix = projection * view;
         Matrix4x4 vpMatrixInv = vpMatrix.inverse;
         Shader.SetGlobalMatrix("_vpMatrix", vpMatrix);
         Shader.SetGlobalMatrix("_vpMatrixInv", vpMatrixInv);
 
         GBufferPass(context, camera);
-      //  ClusterLightingPass(context, camera);
+        ClusterLightingPass(context, camera);
         LightPass(context, camera);
 
 
         // ******************************TAA pass ****************************************************
-
-        if (frameID >= 1)
+        
+        /*
+        if (frameID <-1)
            
         {
 
@@ -119,7 +122,7 @@ public class XRenderPipeline : RenderPipeline
             cmd.SetGlobalFloat("_BlendAlpha", BlendAlpha);
             
 
-            cmd.Blit(BuiltinRenderTextureType.CameraTarget, outputTAAID, mat);
+           cmd.Blit(BuiltinRenderTextureType.CameraTarget, outputTAAID, mat);
 
             cmd.Blit(outputTAAID, HistoryBufferID); // Save current frame for next frame.
             cmd.Blit(outputTAAID, BuiltinRenderTextureType.CameraTarget);
@@ -134,6 +137,8 @@ public class XRenderPipeline : RenderPipeline
             cmd.SetGlobalTexture("_HistoryBuffer", HistoryBuffer);
 
         }
+        */
+        
 
         frameID++;
 
@@ -199,14 +204,15 @@ public class XRenderPipeline : RenderPipeline
     {
         camera.TryGetCullingParameters(out var cullingParameters);
         var CullingResults = context.Cull(ref cullingParameters);
+
         clusterLight.ClusterGenerate(camera);
-        //clusterLight.DebugGenerateClusters();
+       // clusterLight.DebugGenerateClusters();
 
         //update light buffers
         clusterLight.UpdateLightBuffer(CullingResults.visibleLights.ToArray());
         //light assign 
         clusterLight.AssignLightsToClusters();
-        // clusterLight.DebugLightAssign();
+       //  clusterLight.DebugLightAssign();
         clusterLight.SetShaderParameters();
 
 

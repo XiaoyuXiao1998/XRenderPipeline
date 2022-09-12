@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -19,6 +18,13 @@ public class TAA
     int FrameID;
     SAMPLE_METHOD sampleMethod;
     List<Vector2> samplePatterns;
+
+    //reprojection variables for reprojection
+    Matrix4x4 previousViewProjection;
+    Vector2 previousOffset;
+    Vector2 currentOffset;
+
+
 
 
 
@@ -45,6 +51,8 @@ public class TAA
         jitteredProjection.m02 += (offset.x * 2 - 1) / Screen.width;
         jitteredProjection.m12 += (offset.y * 2- 1) / Screen.height;
     }
+
+
 
 
 
